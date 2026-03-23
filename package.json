@@ -1,0 +1,32 @@
+{
+  "name": "multisigwallet",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "clean": "hardhat clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.6",
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.3",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.15",
+    "chai": "^4.5.0",
+    "dotenv": "^17.3.1",
+    "hardhat": "^3.2.0",
+    "typechain": "^8.3.2",
+    "typescript": "~5.8.3"
+  },
+  "type": "module",
+  "dependencies": {
+    "ethers": "^6.16.0"
+  }
+}
