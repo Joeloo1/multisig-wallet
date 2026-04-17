@@ -146,15 +146,21 @@ describe("MultiSigWallet", function () {
     expect(balance).to.equal(amount);
   });
 
-  describe("Sumbit", async () => {
-    it("should allow an owner o submit a transation", async () => {
+  describe("Submit", async () => {
+    it("should allow an owner to submit a transaction", async () => {
       await expect(
         multiSigWallet
           .connect(owner1)
           .submit(await owner2.getAddress(), ethers.parseEther("1"), "0x"),
       )
         .to.emit(multiSigWallet, "Submit")
-        .withArgs(0);
+        .withArgs(
+          0,
+          await owner1.getAddress(),
+          await owner2.getAddress(),
+          ethers.parseEther("1"),
+          "0x",
+        );
     });
 
     it("Should store the transaction correctly", async () => {
@@ -223,7 +229,7 @@ describe("MultiSigWallet", function () {
 
       await expect(multiSigWallet.connect(owner1).execute(0))
         .to.emit(multiSigWallet, "Execute")
-        .withArgs(0);
+        .withArgs(0, await nonOwner.getAddress(), SEND_AMOUNT, true);
 
       const balanceAfter = await ethers.provider.getBalance(
         await nonOwner.getAddress(),
@@ -244,7 +250,7 @@ describe("MultiSigWallet", function () {
       await multiSigWallet.connect(owner1).approve(0);
       await expect(
         multiSigWallet.connect(owner1).execute(0),
-      ).to.be.revertedWith("Approve < numConfirmationsRequired");
+      ).to.be.revertedWith("Not enough confirmations");
     });
 
     it("Should revert if already executed", async () => {
@@ -283,7 +289,7 @@ describe("MultiSigWallet", function () {
 
     it("Should revert if owner has not approved the tx", async () => {
       await expect(multiSigWallet.connect(owner2).revoke(0)).to.be.revertedWith(
-        "Tx not approved ",
+        "Tx not approved",
       );
     });
 
@@ -304,7 +310,7 @@ describe("MultiSigWallet", function () {
 
       await expect(
         multiSigWallet.connect(owner1).execute(0),
-      ).to.be.revertedWith("Approve < numConfirmationsRequired");
+      ).to.be.revertedWith("Not enough confirmations");
     });
   });
 });
