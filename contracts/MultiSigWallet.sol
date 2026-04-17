@@ -3,10 +3,23 @@ pragma solidity ^0.8.28;
 
 contract MultiSigWallet {
     event Deposit(address indexed sender, uint amount);
-    event Submit(uint indexed txId);
+    // event Submit(uint indexed txId);
+    event Submit(
+        uint indexed txId,
+        address indexed owner,
+        address indexed to,
+        uint value,
+        bytes data
+    );
     event Approve(address indexed owner, uint indexed txId);
     event Revoke(address indexed owner, uint indexed txId);
-    event Execute(uint indexed txId);
+    // event Execute(uint indexed txId);
+    event Execute(
+        uint indexed txId,
+        address indexed to,
+        uint value,
+        bool success
+    );
 
     struct Transaction {
         address to;
@@ -21,6 +34,8 @@ contract MultiSigWallet {
 
     Transaction[] public transactions;
     mapping(uint => mapping(address => bool)) public approved;
+
+    mapping(uint => uint) public approvalCount;
 
     modifier onlyOwner() {
         require(isOwner[msg.sender], "Not owner");
@@ -68,16 +83,38 @@ contract MultiSigWallet {
         emit Deposit(msg.sender, msg.value);
     }
 
+    function getTransaction(
+        uint _txId
+    )
+        external
+        view
+        txExists(_txId)
+        returns (address to, uint value, bytes memory data, bool executed)
+    {
+        Transaction storage txn = transactions[_txId];
+        return (txn.to, txn.value, txn.data, txn.executed);
+    }
+
+    function getOwners() external view returns (address[] memory) {
+        return owners;
+    }
+
     function submit(
         address _to,
         uint _value,
         bytes calldata _data
     ) external onlyOwner {
+        require(_to != address(0), "invalid address");
+
+        require(_value > 0 || _data.length > 0, "empty tx");
+
+        uint txId = transactions.length;
+
         transactions.push(
             Transaction({to: _to, value: _value, data: _data, executed: false})
         );
 
-        emit Submit(transactions.length - 1);
+        emit Submit(txId, msg.sender, _to, _value, _data);
     }
 
     function approve(
@@ -85,24 +122,32 @@ contract MultiSigWallet {
     ) external onlyOwner txExists(_txId) notApproved(_txId) notExecuted(_txId) {
         approved[_txId][msg.sender] = true;
 
+        approvalCount[_txId] += 1;
+
         emit Approve(msg.sender, _txId);
     }
 
-    function _getApproveCount(uint _txId) private view returns (uint count) {
-        for (uint i; i < owners.length; i++) {
-            if (approved[_txId][owners[i]]) {
-                count += 1;
-            }
-        }
-    }
+    // function _getApproveCount(uint _txId) private view returns (uint count) {
+    //     for (uint i; i < owners.length; i++) {
+    //         if (approved[_txId][owners[i]]) {
+    //             count += 1;
+    //         }
+    //     }
+    // }
 
-    function execute(uint _txId) external txExists(_txId) notExecuted(_txId) {
-        require(
-            _getApproveCount(_txId) >= numConfirmationsRequired,
-            "Approve < numConfirmationsRequired"
-        );
-
+    function execute(
+        uint _txId
+    ) external onlyOwner txExists(_txId) notExecuted(_txId) {
+        // require(
+        //     _getApproveCount(_txId) >= numConfirmationsRequired,
+        //     "Approve < numConfirmationsRequired"
+        // );
         Transaction storage transaction = transactions[_txId];
+
+        require(
+            approvalCount[_txId] >= numConfirmationsRequired,
+            "Not enough confirmations"
+        );
 
         transaction.executed = true;
 
@@ -110,17 +155,18 @@ contract MultiSigWallet {
             transaction.data
         );
 
-        require(success, "Tx Failed");
+        require(success, "Execution failed");
 
-        emit Execute(_txId);
+        emit Execute(_txId, transaction.to, transaction.value, success);
     }
 
     function revoke(
         uint _txId
     ) external onlyOwner txExists(_txId) notExecuted(_txId) {
-        require(approved[_txId][msg.sender], "Tx not approved ");
+        require(approved[_txId][msg.sender], "Tx not approved");
 
         approved[_txId][msg.sender] = false;
+        approvalCount[_txId] -= 1;
 
         emit Revoke(msg.sender, _txId);
     }
